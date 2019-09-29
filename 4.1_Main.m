@@ -117,7 +117,9 @@ for irep = 1:nrep + nburn    % GIBBS iterations starts here
     % We use the function 'carter_kohn_hom' to produce a single draw from 
     % the marginal density of B_t conditional on y and sigma
     % i.e. p(B_t|y,Sigma). This results in a 21x173 matrix, corresponding
-    % to a single draw of each of the coefficients at each time period. 
+    % to a single draw of each of the coefficients at each time period. The
+    % inputs Sigmadraw and Qdraw are used recursively, so each iteration of
+    % the Gibbs sample uses values from the previous iteration. 
     
     [Btdraw] = carter_kohn_hom(y,Z,Sigmadraw,Qdraw,K,M,t,B_0_prmean,B_0_prvar);
     
@@ -167,32 +169,42 @@ for irep = 1:nrep + nburn    % GIBBS iterations starts here
     Sigmachol = chol(Sigmadraw); % Cholesky decomposition 
     
 %% IRF 
-
-    if irep > nburn;
+    % we only apply IRF analysis once we have iterated Gibbs sampling a
+    % sufficient number of times
+    if irep > nburn; 
         
         % For memory efficiency, we just save the means of the draws. This
         % is achieved by adding the three draw matricies worked out above to 
         % a matricies of accumulated draws from all previous iterations of
-        % the gibbs loop. 
+        % the gibbs loop (it works because the expected value of the mean
+        % is zero. The means for Q and Sigma are then fed back as an input
+        % into the draws for B_t (carter_kohn function). 
         
         Bt_postmean = Bt_postmean + Btdraw; 
         Qmean = Qmean + Qdraw;
         Sigmamean = Sigmamean + Sigmadraw;
          
-            %% biga is a 6x6 matrix with eye in bottom left corner and
-            % non-intercept btdraws (18 of them ) spread across top half. 
+            %% biga is a 6x6 matrix of coefficients of the MA version of 
+            % the VAR model. Is is constructed with a 3x3 I matrix in 
+            % bottom left corner in order to make it conformable with this
+            % VAR(2) model. We are only concerned with non-intercept
+            % coefficients (18 of them ) spread across top half.
+            % This corresponds to equation 25 in the report. The matrix
+            % biga changes in every period of the analysis, because the
+            % coefficients are time varying, so we apply the analysis below
+            % in every time period. 
             
             biga = zeros(M*p,M*p); %6x6
             for j = 1:p-1
                 biga(j*M+1:M*(j+1),M*(j-1)+1:j*M) = eye(M); % insert eye to bottom left corner
             end
 
-            for i = 1:t %Get impulses recurssively for each time period
+            for i = 1:t 
                 bbtemp = Btdraw(M+1:K,i);  % get the draw of B(t) at time i=1,...,T  (exclude intercept)
                 splace = 0;
                 for ii = 1:p
                     for iii = 1:M
-                        biga(iii,(ii-1)*M+1:ii*M) = bbtemp(splace+1:splace+M,1)'; %
+                        biga(iii,(ii-1)*M+1:ii*M) = bbtemp(splace+1:splace+M,1)'; %load non-intercept terms
                         splace = splace + M;
                     end
                 end
@@ -205,19 +217,28 @@ for irep = 1:nrep + nburn    % GIBBS iterations starts here
                 
                 % Now get impulse responses for 1 through nhor future
                 % periods. impresp is a 3x63 matrix which contains 9
-                % response values for each period. 3 of these are for each
-                % variable, but the other dimension of 3 is not that clear just yet.  
-                % bigai accumulates the shocks over the 21 period horizon
-                % of the impulse response. 
+                % response values in total for each period, 3 for each 
+                % variable. These three responses correspond to the three
+                % possible shocks that are impelemented in the schock
+                % matrix, which contains 3 sets of shocks. 
+                % bigai is updated through mulitiplication with the 
+                % coefficient matrix after each time period. 
+                
                 impresp = zeros(M,M*nhor); % matrix to store initial response at each period
                 impresp(1:M,1:M) = shock;  % First shock is the Cholesky of the VAR covariance
                 bigai = biga;
                 for j = 1:nhor-1
-                    impresp(:,j*M+1:(j+1)*M) = bigj*bigai*bigj'*shock;
-                    bigai = bigai*biga;
+                    impresp(:,j*M+1:(j+1)*M) = bigj*bigai*bigj'*shock; % compute the value of Y for each IRF time period 
+                    bigai = bigai*biga; % update the coefficient matrix for next period
                 end
 
-                % Only for specified periods
+                % The secion below filters the responses that we have
+                % calculated. We keep only the responses that use beta
+                % coefficients from the periods 1975.1, 1981.3, and 1996.1.
+                % We also filter out responses to all but the third set of
+                % innovations included in the schock vectore - i.e. the
+                % unit shock to the third variable. 
+                
                 if yearlab(i,1) == 1975.00;   % 1975:Q1
                     impf_m = zeros(M,nhor);
                     jj=0;
