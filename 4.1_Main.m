@@ -60,7 +60,7 @@ it_print = 100; % Print in the screen every "it_print"-th iteration
 % measurement equation, using the function ts_prior. The result is
 % estimates for priors for B_0 and Var(B_0). 
 
-[B_OLS,VB_OLS,A_OLS,sigma_OLS,VA_OLS]= ts_prior(Y,tau,M,p);
+[B_OLS,VB_OLS]= ts_prior(Y,tau,M,p);
 
 % Given the distributions we have, we now have to define our priors for B,
 % Q and Sigma. These are set in accordance with how they are set in 
@@ -210,10 +210,8 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
                 % column is [0 0 1]', therefore implementing a unit shock
                 % in the interest rate. 
                 
-                shock = eye(3)
-                % shock = Sigmachol';   % First shock is the Cholesky of the VAR covariance
-                % diagonal = diag(diag(shock)); 
-                % shock = inv(diagonal)*shock;    % Unit initial shock 
+                shock = eye(3); %Unit initial shock
+                 
                 
                 % Now get impulse responses for 1 through nhor future
                 % periods. impresp is a 3x63 matrix which contains 9
@@ -284,7 +282,6 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
                 end
             end %END geting impulses for each time period 
         end %END the impulse response calculation section   
-    end % END saving after burn-in results 
 end %END main Gibbs loop (for irep = 1:nrep+nburn)
 clc;
 toc; % Stop timer and print total time
@@ -349,7 +346,7 @@ toc; % Stop timer and print total time
     title('Impulse response of interest rate, 1996:Q1')
     xlim([1 nhor])
     set(gca,'XTick',0:3:nhor)
-end
+    
 
 disp('             ')
 disp('To plot impulse responses, use:         plot(1:nhor,squeeze(imp75XY(:,VAR,:)))           ')
