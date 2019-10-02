@@ -31,29 +31,32 @@ function [bdraw] = carter_kohn_hom(y,Z,Ht,Qt,m,p,t,B0,V0)
 bp = B0; % Mean of initial state vector (initial b_0|0) 
 Vp = V0; % Variance of initial state vector (initial P_0|0)
 
-% Create matrices to be filled with the filter loop:
-%Store forecasted states into a matrix that has the time periods as rows
-%and the number of coefficients (21) as columns: 
+%Create matrices to be filled with the filter loop:
+% Store forecasted states into a matrix that has t rows
+% and the number of coefficients (21) columns: 
 bt = zeros(t,m);    
-%Store MSE matrix with rows being the var-cov of the coefficients and
-%columns the time periods: 
+% Store MSE matrix with rows being the var-cov of the coefficients and
+% columns the time periods: 
 Vt = zeros(m^2,t); 
 
 R = Ht;  
 
+
 %Start loop that iteates over time dimension: 
 for i=1:t
     %Select Z_t from Z, which contains Z_t for all ts: 
-    H = Z((i-1)*p+1:i*p,:); 
-    %Compute the prediction error: observed data - predicted measurement
-    %where predicted measurement is equal to (Z_t*b_{t|t})
+    H = Z((i-1)*p+1:i*p,:);
+    
+    %COMPUTE PREDICTION ERROR: 
+    %observed data - predicted measurement, where predicted measurement is 
+    %equal to (Z_t*b_{t|t})
     cfe = y(:,i) - H*bp;  
-    %Compute prediction error variance: F=Z_t*P_{t|t}*Z'_t+ Sigma, and
-    %compute its inverse: 
+    %COMPUTE PREDICTION ERROR VARIANCE: 
+    %F=Z_t*P_{t|t}*Z'_t+ Sigma, and compute its inverse: 
     f = H*Vp*H' + R;             
     inv_f = inv(f);
     
-    %Update the states and MSE:
+    %UPDATE STATES AND MSE:
     %(NB: Kalman Gain not computed separately but in the formula directly)
     btt = bp + Vp*H'*inv_f*cfe;  % b_{t|t}=b_{t|t-1}+K_t(u_t)
                                  % where K_t=P_t|t*Z'_t*inv(F)
@@ -77,27 +80,40 @@ end
 
 %% Backward Sampling (BS) 
 
-% draw Sdraw(T|T) ~ N(S(T|T),P(T|T))
 %Create the output matrix to be filled with the loop: a 173*21 matrix (thus
 %rows are time periods and columns the coefficients) 
 bdraw = zeros(t,m); 
 
-%-------------------------         Step 1       ---------------------------
+%-------------------------------- Step 1 ----------------------------------
 %Start at time T by drawing beta_T from MNorm(b_T|T,P_T|T): thus fill in
 %the last row of the output matrix 
 bdraw(t,:) = mvnrnd(btt,Vtt,1); 
 
-%-------------------------         Step 2       ---------------------------
-%Step 2: Backward recursions
+%-------------------------------- Step 2 ----------------------------------
+%Backward recursions
+%Loop over all time periods until the semi-last one, for which you already
+%computed the final draw: 
 for i=1:t-1
-    bf = bdraw(t-i+1,:)';         %Take out b_T, then b_{T-1}, ....
-    btt = bt(t-i,:)';             %Take out b_{T-1}, then b_{T-2},....
-    Vtt = reshape(Vt(:,t-i),m,m); %Take out a 21 x 21 matrix with the T-1, T-2 elements  
+    bf = bdraw(t-i+1,:)';         %Take out b_T, then b_{T-1}, ....b_{2}
+    btt = bt(t-i,:)';             %Take out b_{T-1}, then b_{T-2},....b_{1}
+    %Take out the P_{t|t} matrix 21 x 21 matrix for each t=T-1,T-2,...
+    Vtt = reshape(Vt(:,t-i),m,m); 
     f = Vtt + Qt;                 %(P_{t|t}+Q)    
     inv_f = inv(f);               %(P_{t|t}+Q)^(-1)
-    cfe = bf - btt;               %(estimated beta (drawn from the distribution)-b_{t|t})
+    %Compute difference between just drawn state and updated state: 
+    cfe = bf - btt;
+    %Compute the moments of the distribution from which to recursively draw
+    %the next states: 
     bmean = btt + Vtt*inv_f*cfe;  % EB_t
     bvar = Vtt - Vtt*inv_f*Vtt;   % VB_t
-    bdraw(t-i,:) = mvnrnd(bmean,bvar,1); %bmean' + randn(1,m)*chol(bvar); --> Draw from Mnorm(b_{t|t},P_{t|t})
+    %Draw the states: 
+    bdraw(t-i,:) = mvnrnd(bmean,bvar,1); 
 end
+%Store the final joint vector of states as a  matrix of drawn/filtred 
+%coefficients. Transpose it so that in the end: 
+% - rows = coefficients 
+% - columns= time periods 
 bdraw = bdraw'; %bdraw is the final vector of joint b`T
+
+
+
