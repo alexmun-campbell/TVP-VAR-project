@@ -286,8 +286,6 @@ end %END main Gibbs loop (for irep = 1:nrep+nburn)
 clc;
 toc; % Stop timer and print total time
 %% ================ END GIBBS SAMPLING ==================================
-
-
 % This section takes moments along the first dimension, i.e. across the
 % Gibbs sample iterations. The moments are for the 16th, 50th and
 % 84th percentile. 
@@ -305,31 +303,38 @@ toc; % Stop timer and print total time
     plot(1:nhor,squeeze(imp75XY(:,1,:)))
     title('Impulse response of inflation, 1975:Q1')
     xlim([1 nhor])
+    ylim([-0.3 0.2])
     set(gca,'XTick',0:3:nhor)
     subplot(3,3,2)
     plot(1:nhor,squeeze(imp75XY(:,2,:)))
     title('Impulse response of unemployment, 1975:Q1')
     xlim([1 nhor])
+    ylim([-0.1 0.2])
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,3)
+    ylim([0 1])
     plot(1:nhor,squeeze(imp75XY(:,3,:)))
     title('Impulse response of interest rate, 1975:Q1')
     xlim([1 nhor])
+    ylim([-0.3 0.1])
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,4)
     plot(1:nhor,squeeze(imp81XY(:,1,:)))
     title('Impulse response of inflation, 1981:Q3')
     xlim([1 nhor])
+    ylim([-0.1 0.2])
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,5)
     plot(1:nhor,squeeze(imp81XY(:,2,:)))
     title('Impulse response of unemployment, 1981:Q3')
     xlim([1 nhor])
+    ylim([0 1])
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,6)
     plot(1:nhor,squeeze(imp81XY(:,3,:)))
     title('Impulse response of interest rate, 1981:Q3')
     xlim([1 nhor])
+    ylim([-0.4 0.1])
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,7)
     plot(1:nhor,squeeze(imp96XY(:,1,:)))
@@ -340,11 +345,13 @@ toc; % Stop timer and print total time
     plot(1:nhor,squeeze(imp96XY(:,2,:)))
     title('Impulse response of unemployment, 1996:Q1')
     xlim([1 nhor])
+    ylim([-0.1 0.2])
     set(gca,'XTick',0:3:nhor)
     subplot(3,3,9)
     plot(1:nhor,squeeze(imp96XY(:,3,:)))
     title('Impulse response of interest rate, 1996:Q1')
     xlim([1 nhor])
+     ylim([0 1])
     set(gca,'XTick',0:3:nhor)
     
 
