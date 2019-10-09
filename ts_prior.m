@@ -37,7 +37,6 @@ for i = p+1:tau+p
 end
 
 %% Beta OLS computation: 
-
 %Create empty matrices to be filled with OLS coefficients and their var-cov: 
 vbar = zeros(K,K); % K x K variance-covariance matrix of the coefficients
 xhy = zeros(K,1);  % create a column vector as long as the number of coefficients
@@ -58,7 +57,6 @@ vbar = inv(vbar);
 aols = vbar*xhy;  
 
 %% Var(Beta_OLS) computation: 
-
 %Create a 3x3 zero matrix
 sse2 = zeros(M,M); 
 
