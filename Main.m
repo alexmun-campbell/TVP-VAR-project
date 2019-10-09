@@ -85,7 +85,6 @@ Sigmadraw = 0.1*eye(M); %same as above, just needs to be in the support
 
 % Now we create some matrices for storage that will be filled in once we
 % start the Gibbs sampling.
-
 Btdraw = zeros(K,t); 
 Bt_postmean = zeros(K,t);
 Qmean = zeros(K,K);
@@ -177,6 +176,10 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
     % phase.
     if irep > nburn;         
             %%
+            %Create matrix that is going to contain all beta draws over
+            %which we will take the mean after the GS as our moment
+            %estimate: 
+            Bt_postmean = Bt_postmean + Btdraw;
             % biga is the A matrix of the VAR(1) version of our VAR(2) model. 
             % biga is 6x6 matrix. The matrix
             % biga changes in every period of the analysis, because the
@@ -210,8 +213,10 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
                 % column is [0 0 1]', therefore implementing a unit shock
                 % in the interest rate. 
                 
-                shock = eye(3); %Unit initial shock
-                 
+                %shock = eye(3); %Unit initial shock
+                shock = Sigmachol';   % First shock is the Cholesky of the VAR covariance
+                diagonal = diag(diag(shock));
+                shock = inv(diagonal)*shock;
                 
                 % Now get impulse responses for 1 through nhor future
                 % periods. impresp is a 3x63 matrix which contains 9
@@ -286,6 +291,8 @@ end %END main Gibbs loop (for irep = 1:nrep+nburn)
 clc;
 toc; % Stop timer and print total time
 %% ================ END GIBBS SAMPLING ==================================
+%Take the mean of the draw of the betas as moment estimate: 
+Bt_postmean = Bt_postmean./nrep; 
 % This section takes moments along the first dimension, i.e. across the
 % Gibbs sample iterations. The moments are for the 16th, 50th and
 % 84th percentile. 
@@ -303,55 +310,66 @@ toc; % Stop timer and print total time
     plot(1:nhor,squeeze(imp75XY(:,1,:)))
     title('Impulse response of inflation, 1975:Q1')
     xlim([1 nhor])
-    ylim([-0.3 0.2])
+    ylim([-0.2 0.1])
+    yline(0)
     set(gca,'XTick',0:3:nhor)
     subplot(3,3,2)
     plot(1:nhor,squeeze(imp75XY(:,2,:)))
     title('Impulse response of unemployment, 1975:Q1')
     xlim([1 nhor])
-    ylim([-0.1 0.2])
+    ylim([-0.2 0.2])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,3)
-    ylim([0 1])
+    %ylim([0 1])
+    yline(0)
     plot(1:nhor,squeeze(imp75XY(:,3,:)))
     title('Impulse response of interest rate, 1975:Q1')
     xlim([1 nhor])
-    ylim([-0.3 0.1])
+    %ylim([-0.3 0.1])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,4)
     plot(1:nhor,squeeze(imp81XY(:,1,:)))
     title('Impulse response of inflation, 1981:Q3')
     xlim([1 nhor])
-    ylim([-0.1 0.2])
+    ylim([-0.2 0.1])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,5)
     plot(1:nhor,squeeze(imp81XY(:,2,:)))
     title('Impulse response of unemployment, 1981:Q3')
     xlim([1 nhor])
-    ylim([0 1])
+    ylim([-0.2 0.2])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,6)
     plot(1:nhor,squeeze(imp81XY(:,3,:)))
     title('Impulse response of interest rate, 1981:Q3')
     xlim([1 nhor])
-    ylim([-0.4 0.1])
+    %ylim([-0.4 0.1])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,7)
     plot(1:nhor,squeeze(imp96XY(:,1,:)))
     title('Impulse response of inflation, 1996:Q1')
     xlim([1 nhor])
+    ylim([-0.2 0.1])
+    yline(0)
     set(gca,'XTick',0:3:nhor)    
     subplot(3,3,8)
     plot(1:nhor,squeeze(imp96XY(:,2,:)))
     title('Impulse response of unemployment, 1996:Q1')
     xlim([1 nhor])
-    ylim([-0.1 0.2])
+    ylim([-0.2 0.2])
+    yline(0)
     set(gca,'XTick',0:3:nhor)
     subplot(3,3,9)
     plot(1:nhor,squeeze(imp96XY(:,3,:)))
     title('Impulse response of interest rate, 1996:Q1')
     xlim([1 nhor])
-     ylim([0 1])
+     %ylim([0 1])
+     yline(0)
     set(gca,'XTick',0:3:nhor)
     
 
