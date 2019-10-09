@@ -39,8 +39,8 @@ end
 %% Beta OLS computation: 
 
 %Create empty matrices to be filled with OLS coefficients and their var-cov: 
-vbar = zeros(K,K); %  K x K variance-covariance matrix of the coefficients
-xhy = zeros(K,1);  %  create a column vector as long as the number of coefficients
+vbar = zeros(K,K); % K x K variance-covariance matrix of the coefficients
+xhy = zeros(K,1);  % create a column vector as long as the number of coefficients
 
 %Start the OLS loop that iterates through the periods: 
 for i = 1:tau 
@@ -62,7 +62,7 @@ aols = vbar*xhy;
 %Create a 3x3 zero matrix
 sse2 = zeros(M,M); 
 
-%Loop over all time periods: 
+%Loop over all training time periods: 
 for i = 1:tau 
     %Select explanatory variables (correct lags) for each t: 
     zhat1 = Zt((i-1)*M+1:i*M,:);  
@@ -81,7 +81,7 @@ vbar = zeros(K,K);
 %matrix: 
 for i = 1:tau
     zhat1 = Zt((i-1)*M+1:i*M,:);
-    vbar = vbar + zhat1'*inv(hbar)*zhat1; % Z'Z x Inv(Var(y))^(-1)
+    vbar = vbar + zhat1'*inv(hbar)*zhat1; %Z'Z x Inv(Var(y))^(-1)
     
 % According to the variance formula, compute the inverse:  
 vbar = inv(vbar);                         
