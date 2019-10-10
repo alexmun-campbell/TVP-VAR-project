@@ -1,4 +1,4 @@
-%====================================4.1 Main===================================
+%==================================4.1 Main================================
 clear;
 clc;
 
@@ -26,8 +26,6 @@ K = M + p*(M^2);            % K is the number of elements in the state vector
 % Here we distribute the lagged y data into the Z matrix so it is
 % conformable with a beta_t matrix of coefficients. 
 
-%COPY GREY BOX FROM REPORT 
-
 Z = zeros((t-tau-p)*M,K);   
 for i = 1:t-tau-p
     ztemp = eye(M);
@@ -47,7 +45,7 @@ y = Y(tau+p+1:t,:)';
 yearlab = yearlab(tau+p+1:t);
 t=size(y,2); % t now equals 173
 
-%% ----------------------MODEL AND GIBBS PRELIMINARIES-----------------------
+%% --------------------MODEL AND GIBBS PRELIMINARIES-----------------------
 
 nrep = 5000;    % Number of sample draws 
 nburn = 2000;   % Number of burn-in-draws
@@ -64,7 +62,7 @@ it_print = 100; % Print in the screen every "it_print"-th iteration
 
 % Given the distributions we have, we now have to define our priors for B,
 % Q and Sigma. These are set in accordance with how they are set in 
-% Primiceri (2005). These are the hyperparameters of the beta, Q and sigma
+% Primiceri (2005). These are the hyperparameters of the beta, Q and Sigma
 % initial priors. 
 
 B_0_prmean = B_OLS;
@@ -76,15 +74,16 @@ Q_prvar = tau;
 Sigma_prmean = eye(M);
 Sigma_prvar = M+1;
 
-% To start the Kalman filtering asign arbitrary values that are in support
-% of their priors, to Q and sigma. 
+% To start the Kalman filtering assign arbitrary values that are in support
+% of their priors, Q and Sigma. 
 
 consQ = 0.0001;
 Qdraw = consQ*eye(K);
-Sigmadraw = 0.1*eye(M); %same as above, just needs to be in the support
+Sigmadraw = 0.1*eye(M);
 
-% Now we create some matrices for storage that will be filled in once we
+% Create some matrices for storage that will be filled in once we
 % start the Gibbs sampling.
+
 Btdraw = zeros(K,t); 
 Bt_postmean = zeros(K,t);
 Qmean = zeros(K,K);
@@ -93,15 +92,16 @@ Sigmamean = zeros(M,M);
 %% -------------------------IRF-PRELIMINARIES------------------------------
 nhor = 21;     % The number of periods in the impulse response function. 
 
-% matricies containing IRFs for 1975q1, 1981q3, 1996q1. The dimensions
-% correspond to the iterations of the gibbs sample, each of the variables,
-% and each of the 21 periods of the IRF analysis. 
+% Matricies to be filled containing IRFs for 1975q1, 1981q3, 1996q1. The 
+% dimensions correspond to the iterations of the gibbs sample, each of the
+% variables, and each of the 21 periods of the IRF analysis. 
 
 imp75 = zeros(nrep,M,nhor); 
 imp81 = zeros(nrep,M,nhor);
 imp96 = zeros(nrep,M,nhor);
 
-% This corresponds to equation X in report. 
+% This corresponds to variable J introduced in equation (14) in the report
+
 bigj = zeros(M,M*p); 
 bigj(1:M,1:M) = eye(M);
 
@@ -121,21 +121,22 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
 %% Draw 1: B_t from p(B_t|y,Sigma)
     
     % We use the function 'carter_kohn_hom' to to run the FFBS algorithm. 
-    % This results in a 21x173 matrix, corresponding 
-    % to one Gibbs sample draw of each of the coefficients in each time 
-    % period. The
-    % inputs Sigmadraw and Qdraw are updated for each Gibbs sample repetition.
+    % This results in a 21x173 matrix, corresponding to one Gibbs sample
+    % draw of each of the coefficients in each time period. The inputs
+    % Sigmadraw and Qdraw are updated for each Gibbs sample repetition.
+    
     [Btdraw] = carter_kohn_hom(y,Z,Sigmadraw,Qdraw,K,M,t,B_0_prmean,B_0_prvar);
     
   
 %% Draw 2: Q from p(Q^{-1}|y,B_t) which is i-Wishart
 
     % We draw Q from an Inverse Wishart distribution. The parameters 
-    % of the distribution are derrived as equation X in the main report.
+    % of the distribution are derived as equation (11) in the main report.
     % The mean is taken as the inverse of the accumulated sum of squared 
-    % errors added to the prior mean, and the variance is simply T.  
+    % errors added to the prior mean, and the variance is simply t.  
     
     % Differencing Btdraw to create the sum of squared errors
+    
     Btemp = Btdraw(:,2:t)' - Btdraw(:,1:t-1)'; 
     sse_2Q = zeros(K,K);
     for i = 1:t-1
@@ -149,18 +150,19 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
 %% Draw 3: Sigma from p(Sigma|y,B_t) which is i-Wishart
 
     % We draw Sigma from an Inverse Wishart distribution. The parameters 
-    % of the distirbution are derrived as equation Y in the main report. 
+    % of the distirbution are derived as equation (10) in the main report. 
     % The mean is taken as the inverse of the sum of squared residuals
-    % added to the prior mean. The variance is simply T. 
+    % added to the prior mean. The variance is simply t. 
     
     % Find residuals using data and the current draw of coefficients
+    
     resids = zeros(M,t);
     for i = 1:t
         resids(:,i) = y(:,i) - Z((i-1)*M+1:i*M,:)*Btdraw(:,i);
     end
     
-    % Here we create a matrix of the accumulated sum of squared residuals, to
-    % be used as the mean parameter in the i-wishart draw below. 
+    % Create a matrix for the accumulated sum of squared residuals, to
+    % be used as the mean parameter in the i-Wishart draw below. 
     sse_2S = zeros(M,M);
     for i = 1:t
         sse_2S = sse_2S + resids(:,i)*resids(:,i)';
@@ -169,76 +171,73 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
     Sigmainv = inv(sse_2S + Sigma_prmean);          % compute mean to use for the Wishart
     Sigmainvdraw = wish(Sigmainv,t+Sigma_prvar);    % draw from the Wishsart distribution
     Sigmadraw = inv(Sigmainvdraw);                  % turn into non-inverse Sigma
-    Sigmachol = chol(Sigmadraw);                    % Cholesky decomposition (for IRF analysis)
     
 %% IRF 
-    % We only apply IRF analysis once we have exceeded the burn-in draws
-    % phase.
+    % We only apply IRF analysis once we have exceeded the burn-in draws phase.
     if irep > nburn;         
-            %%
-            %Create matrix that is going to contain all beta draws over
-            %which we will take the mean after the GS as our moment
-            %estimate: 
+            
+            % Create matrix that is going to contain all beta draws over
+            % which we will take the mean after the Gibbs sampler as our moment
+            % estimate: 
             Bt_postmean = Bt_postmean + Btdraw;
-            % biga is the A matrix of the VAR(1) version of our VAR(2) model. 
-            % biga is 6x6 matrix. The matrix
-            % biga changes in every period of the analysis, because the
-            % coefficients are time varying, so we apply the analysis below
-            % in every time period. 
+            
+            % biga is the A matrix of the VAR(1) version of our VAR(2) model, 
+            % found in equation (12. biga changes in every period of the 
+            % analysis, because the coefficients are time varying, so we 
+            % apply the analysis below in every time period. 
             
             biga = zeros(M*p,M*p); 
             for j = 1:p-1
                 biga(j*M+1:M*(j+1),M*(j-1)+1:j*M) = eye(M); % fill the A matrix with identity matrix (3) in bottom left corner
             end
 
-            % the following procedure is applied separately in each time
-            % period. 
+            % The following procedure is applied separately in each time period. 
             
-            % this loop takes coefficients of the relevant time period from
+            % This loop takes coefficients of the relevant time period from
             % Bt_draw (which contains all coefficients for all t) and uses
             % them to update the biga matrix, so that it can change for
             % every t. 
+            
             for i = 1:t 
                 bbtemp = Btdraw(M+1:K,i);  % get the draw of B(t) at time i=1,...,T  (exclude intercept)
                 splace = 0;
                 for ii = 1:p
                     for iii = 1:M
-                        biga(iii,(ii-1)*M+1:ii*M) = bbtemp(splace+1:splace+M,1)'; %load non-intercept coefficient draws
+                        biga(iii,(ii-1)*M+1:ii*M) = bbtemp(splace+1:splace+M,1)'; % Load non-intercept coefficient draws
                         splace = splace + M;
                     end
                 end
                 
-                % create the shock matrix 
-                % we want to create a shock matrix in which the third
+                % Next we want to create a shock matrix in which the third
                 % column is [0 0 1]', therefore implementing a unit shock
                 % in the interest rate. 
                 
-                %shock = eye(3); %Unit initial shock
-                shock = Sigmachol';   % First shock is the Cholesky of the VAR covariance
-                diagonal = diag(diag(shock));
-                shock = inv(diagonal)*shock;
+                shock = eye(3);
                 
                 % Now get impulse responses for 1 through nhor future
                 % periods. impresp is a 3x63 matrix which contains 9
                 % response values in total for each period, 3 for each 
                 % variable. These three responses correspond to the 3
                 % possible shocks that are contained in the schock
-                % matrix.  
+                % matrix
+                
                 % bigai is updated through mulitiplication with the 
                 % coefficient matrix after each time period. 
-                
-                % This chunk implements the IRF analysis. S
-                
-                % results matrix to store impulse responses in all periods
+                                
+                % Create a results matrix to store impulse responses in all periods
                 impresp = zeros(M,M*nhor); 
+                
                 % Fill in the first period of the results matrix with the shock (as defined above) 
                 impresp(1:M,1:M) = shock;
-                % create a separate variable for the a matrix so that we
+                
+                % Create a separate variable for the a matrix so that we
                 % can update it for each period of the IRF analysis. 
                 bigai = biga; 
-                % This follows the impulse response function as in equation XX.
+                
+                % This follows the impulse response function as in equation 15.
                 % Fill in each period of the results matrix according to
                 % the impulse response function formula. 
+                
                 for j = 1:nhor-1
                     impresp(:,j*M+1:(j+1)*M) = bigj*bigai*bigj'*shock;
                     bigai = bigai*biga; % update the coefficient matrix for next period
@@ -249,7 +248,6 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
                 % - those that correspond to the shock in the interest 
                 % rate (i.e. those caused by the third column of our shock
                 % matrix). 
-    
                 
                 if yearlab(i,1) == 1975.00;   % store only IRF from 1975:Q1
                     impf_m = zeros(M,nhor);
@@ -257,45 +255,83 @@ for irep = 1:nrep + nburn    % 7000 gibbs iterations starts here
                     for ij = 1:nhor
                         jj = jj + M;    % select only the third column for each time period of the IRF
                         impf_m(:,ij) = impresp(:,jj);
-                    end
-                    
-                % for each iteration of the Gibbs sample, fill in the
+                    end           
+                % For each iteration of the Gibbs sampler, fill in the
                 % results along the first dimension 
                     imp75(irep-nburn,:,:) = impf_m; 
                 end
-                if yearlab(i,1) == 1981.50;   % store only IRF from 1975:Q1
+                
+                if yearlab(i,1) == 1981.50;   % store only IRF from 1981:Q3
                     impf_m = zeros(M,nhor);
                     jj=0;
                     for ij = 1:nhor
                         jj = jj + M;    % select only the third column for each time period of the IRF
                         impf_m(:,ij) = impresp(:,jj);
                     end
-                % for each iteration of the Gibbs sample, fill in the
+                % For each iteration of the Gibbs sample, fill in the
                 % results along the first dimension 
                     imp81(irep-nburn,:,:) = impf_m; 
                 end
-                if yearlab(i,1) == 1996.00;   % store only IRF from 1975:Q1
+                
+                if yearlab(i,1) == 1996.00;   % store only IRF from 1996:Q1
                     impf_m = zeros(M,nhor);
                     jj=0;
                     for ij = 1:nhor
                         jj = jj + M;    % select only the third column for each time period of the IRF
                         impf_m(:,ij) = impresp(:,jj);
                     end
-                % for each iteration of the Gibbs sample, fill in the
+                % For each iteration of the Gibbs sample, fill in the
                 % results along the first dimension 
                     imp96(irep-nburn,:,:) = impf_m; 
                 end
-            end %END geting impulses for each time period 
-        end %END the impulse response calculation section   
-end %END main Gibbs loop (for irep = 1:nrep+nburn)
+            end % End getting impulses for each time period 
+        end % End the impulse response calculation section   
+end % End main Gibbs loop (for irep = 1:nrep+nburn)
+
 clc;
 toc; % Stop timer and print total time
 %% ================ END GIBBS SAMPLING ==================================
-%Take the mean of the draw of the betas as moment estimate: 
-Bt_postmean = Bt_postmean./nrep; 
-% This section takes moments along the first dimension, i.e. across the
-% Gibbs sample iterations. The moments are for the 16th, 50th and
-% 84th percentile. 
+
+% Even though it is not used in our IRF analysis since we are integrating
+% that into the Gibbs sampling loop, here is how to take the mean of the 
+% draw of the betas as moment estimate:
+
+Bt_postmean = Bt_postmean./nrep;
+
+%% Graphs and tables
+
+% This works out the percentage range of that each variable's coefficient
+% spans across time. I.e. to what extent was the TVP facility used by each
+% variable in the model? This is calculated by finding the range for each
+% variable as a percentage of the mean coefficient size for that variable.
+% The result is a 21x1 vector, and it is reshaped into a 3x7 matrix in order
+% to map onto the system of equations (2,3,and 4) set out in the report.
+
+Bt_range = ones(21,1)
+for i = 1:21
+    Bt_range(i) = abs((max(Bt_postmean(i,:))-min(Bt_postmean(i,:)))/mean(Bt_postmean(i,:)))
+end 
+Bt_range = reshape(Bt_range,3,7)
+ 
+% Create a table of coefficient ranges for export to the report
+
+rowNames = {'Inflation','Unemployment','Interest Rate'};
+colNames = {'Intercept','Inf_1','Unemp_1', 'IR_1','Inf_2','Unemp_2', 'IR_2'};
+pc_change_table = array2table(Bt_range,'RowNames',rowNames,'VariableNames',colNames)
+ 
+writetable(pc_change_table,'pc_change.csv')
+
+% Now plot a separate chart for each of the coefficients
+ 
+figure
+for i = 1:21       
+    subplot(7,3,i)
+    plot(1:t,Bt_postmean(i,:))  
+end 
+
+% Now we move to plotting the IRF. This section takes moments along the
+% first dimension, i.e. across the Gibbs sample iterations. The moments
+% are for the 16th, 50th and 84th percentile. 
 
     qus = [.16, .5, .84];
     imp75XY=squeeze(quantile(imp75,qus)); 
@@ -372,11 +408,7 @@ Bt_postmean = Bt_postmean./nrep;
      yline(0)
     set(gca,'XTick',0:3:nhor)
     
-
 disp('             ')
 disp('To plot impulse responses, use:         plot(1:nhor,squeeze(imp75XY(:,VAR,:)))           ')
 disp('             ')
 disp('where VAR=1 for impulses of inflation, VAR=2 for unemployment and VAR=3 for interest rate')
-
-
-
